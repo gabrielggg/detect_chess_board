@@ -52,7 +52,7 @@ print(f"[INFO] Rotasi papan relatif ke kamera: {CAM_ROT}° (CW)\n")
 
 while True:
     #ret, frame = cap.read()
-    frame = cv2.imread("tet.jpg")
+    frame = cv2.imread("initial3.jpg")
 
 
     vis = frame.copy()

@@ -14,10 +14,10 @@ import cairosvg
 import time
 
 # === CONFIG ===
-CALIB_JSON = "sqdict.json"
+CALIB_JSON = "squares.json"
 ENGINE_PATH = r"stockfish-windows-x86-64-avx2.exe"
-MOVE_THRESHOLD = 20
-MIN_CONTOUR_AREA = 150
+MOVE_THRESHOLD = 15
+MIN_CONTOUR_AREA = 100
 CAM_INDEX = 2
 BOARD_ORIENTATION = "TOP"  # "TOP", "BOTTOM", "SIDE_L", "SIDE_R"
 
@@ -230,7 +230,7 @@ try:
             
             if ref_frame is None:
                 contador = contador + 1
-                ref_frame = frame_raw.copy()
+                ref_frame = frame_raw
                 print("[DEBUG] Frame available display.")
             else:
                 contador = contador + 1
@@ -268,10 +268,39 @@ try:
                 contours, _ = cv2.findContours(diff_m, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
                 # ambil kandidat dari kontur (kontur, dan bounding)
-                contours_filtered = [c for c in contours if cv2.contourArea(c) > MIN_CONTOUR_AREA]
+                contours_filtered = []
+                contours_filtered_0 = [c for c in contours if cv2.contourArea(c) > MIN_CONTOUR_AREA]
+                for cnt in contours_filtered_0:
+                    area = cv2.contourArea(cnt)
+                    peri = cv2.arcLength(cnt, True)
+                    (x,y), radius = cv2.minEnclosingCircle(cnt)
+                    area_circle = np.pi * radius * radius
+
+                    ratio = area / area_circle  # close to 1.0 for circles
+                    if peri == 0:
+                        continue
+
+                    x,y,w,h = cv2.boundingRect(cnt)
+                    aspect_ratio = max(w, h) / max(1, min(w, h))  # avoid divide by 0
+
+                    # --- 3. Extent: area compared to bounding box
+                    extent = area / (w * h)
+
+                    # --- Filtering rules ---
+                    # Filter out lines:
+                    if aspect_ratio > 3:     # clearly a line
+                        continue
+                    if extent < 0.3:         # long thin shapes
+                        continue
+
+                    circularity = 4 * np.pi * (area / (peri * peri))
+
+                    if  0.5 < ratio < 1.9 and aspect_ratio <= 3 and extent >= 0.3:   # adjust threshold as needed
+                        contours_filtered.append(cnt)
 
                 # helper: buat daftar kandidat kotak (square) untuk sebuah kontur
                 def candidates_for_contour(c):
+                    print("hola")
                     x, y, w, h = cv2.boundingRect(c)
                     M = cv2.moments(c)
                     if M["m00"] != 0:
@@ -532,7 +561,7 @@ try:
                             print(f"[!] Invalid move: {move}")
                     except Exception as e:
                         print(f"[!] Error interpretasi langkah: {e}")
-
+                print("reeeeeeeeeeeeeeeef")
                 ref_frame = None
 
         # === Undo 1 langkah ===
